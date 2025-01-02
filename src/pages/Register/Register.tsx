@@ -1,4 +1,4 @@
-import { rules } from "@/utils/rule";
+import { getRules } from "@/utils/rule";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
@@ -13,8 +13,12 @@ const Register = () => {
   const {
     register,
     handleSubmit,
+    watch,
+    getValues,
     formState: { errors },
   } = useForm<FormData>();
+
+  const rules = getRules(getValues);
 
   const onSubmit = handleSubmit((data) => {
     console.log(data);
