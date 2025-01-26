@@ -67,5 +67,10 @@ export const schema = yup.object({
     .required()
     .oneOf([yup.ref("password")], "Nhập lại password không khớp"),
 });
-
 export type Schema = yup.InferType<typeof schema>;
+
+export const loginSchema = yup.object({
+  email: yup.string().required(),
+  password: yup.string().required(),
+});
+export type LoginSchema = yup.InferType<typeof loginSchema>;

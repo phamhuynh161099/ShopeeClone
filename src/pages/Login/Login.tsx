@@ -1,16 +1,84 @@
-import React from "react";
+import { login } from "@/apis/auth.api";
+import Button from "@/components/Button";
+import Input from "@/components/Input";
+import { AppContext } from "@/contexts/app.context";
+import { ErrorResponseApi } from "@/types/utils.type";
+import { getRules, loginSchema } from "@/utils/rule";
+import { isAxiosUnprocessableEntityError } from "@/utils/utils";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useMutation } from "@tanstack/react-query";
+import { omit } from "lodash";
+import React, { useContext } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+interface FormData {
+  email: string;
+  password: string;
+}
 
 const Login = () => {
+  const { setIsAuthenticated } = useContext(AppContext);
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
+    watch,
+    setError,
+    getValues,
     formState: { errors },
-  } = useForm();
+  } = useForm<FormData>({
+    resolver: yupResolver(loginSchema) as any,
+  });
 
+  const rules = getRules(getValues);
+
+  const loginMutation = useMutation({
+    mutationFn: (body: FormData) => {
+      return login(body);
+    },
+    onSuccess: (data, variables, context) => {
+      console.log("loginMutation success:", data);
+      setIsAuthenticated(true);
+      navigate("/");
+    },
+    onError: (error, variables, context) => {
+      // An error happened!
+      console.log(`error`, error);
+      if (isAxiosUnprocessableEntityError<ErrorResponseApi<FormData>>(error)) {
+        const formError = error.response?.data.data;
+
+        // cach 1
+        if (formError) {
+          Object.keys(formError).forEach((key) => {
+            setError(key as keyof FormData, {
+              message: formError[key as keyof FormData],
+              type: "Server",
+            });
+          });
+        }
+
+        // cach 2
+        // if (formError?.email) {
+        //   setError("email", {
+        //     message: formError.email,
+        //     type: "Server",
+        //   });
+        // }
+
+        // if (formError?.password) {
+        //   setError("password", {
+        //     message: formError.password,
+        //     type: "Server",
+        //   });
+        // }
+      }
+    },
+  });
   const onSubmit = handleSubmit((data) => {
-    console.log(data);
+    const body = data;
+    console.log("submit login");
+    loginMutation.mutate(body);
   });
   return (
     <>
@@ -23,37 +91,35 @@ const Login = () => {
                 onSubmit={onSubmit}
               >
                 <div className="text-2xl">Đăng Nhap</div>
-                <div className="mt-8">
-                  <input
-                    type="email"
-                    name="email"
-                    className="p-3 w-full outline-none border border-gray-300 focus:border-gray-500 focus:shadow-sm rounded-sm"
-                    placeholder="Email"
-                  />
-                  <div className="mt-1 text-red-600 text-sm min-h-[1rem]">
-                    Email khong hop le
-                  </div>
-                </div>
+                <Input
+                  type="email"
+                  className="mt-8"
+                  placeholder="Email"
+                  name="email"
+                  errorMessage={errors.email?.message}
+                  register={register}
+                  rules={rules.email}
+                />
+
+                <Input
+                  type="password"
+                  className="mt-3"
+                  placeholder="Password"
+                  name="password"
+                  errorMessage={errors.password?.message}
+                  register={register}
+                  rules={rules.password}
+                />
 
                 <div className="mt-3">
-                  <input
-                    type="password"
-                    name="password"
-                    className="p-3 w-full outline-none border border-gray-300 focus:border-gray-500 focus:shadow-sm rounded-sm"
-                    placeholder="Password"
-                  />
-                  <div className="mt-1 text-red-600 text-sm min-h-[1rem]">
-                    Password khong hop le
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <button
+                  <Button
                     type="submit"
+                    isLoading={loginMutation.isPending}
+                    disabled={loginMutation.isPending}
                     className="w-full text-center py-4 px-2 uppercase bg-red-500 text-white text-sm hover:bg-red-600"
                   >
                     Đăng Nhap
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="mt-8 text-center">

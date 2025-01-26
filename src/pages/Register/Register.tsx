@@ -1,9 +1,21 @@
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useMutation } from "@tanstack/react-query";
+import React, { useContext } from "react";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate } from "react-router-dom";
 import Input from "@/components/Input";
 import { getRules, schema } from "@/utils/rule";
-import { yupResolver } from "@hookform/resolvers/yup";
-import React from "react";
-import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { registerAccount } from "@/apis/auth.api";
+import { omit } from "lodash";
+import { isAxiosUnprocessableEntityError } from "@/utils/utils";
+import { ErrorResponseApi } from "@/types/utils.type";
+import { AppContext } from "@/contexts/app.context";
+
+/**
+ * phamhuynh1307
+ * 123456789
+ * fake account
+ */
 
 interface FormData {
   email: string;
@@ -12,10 +24,13 @@ interface FormData {
 }
 
 const Register = () => {
+  const { setIsAuthenticated } = useContext(AppContext);
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
     watch,
+    setError,
     getValues,
     formState: { errors },
   } = useForm<FormData>({
@@ -24,8 +39,56 @@ const Register = () => {
 
   const rules = getRules(getValues);
 
+  const registerAccountMutation = useMutation({
+    mutationFn: (body: Omit<FormData, "confirm_password">) => {
+      return registerAccount(body);
+    },
+    onSuccess: (data, variables, context) => {
+      console.log("registerAccountMutation success:", data);
+      setIsAuthenticated(true);
+      navigate("/");
+    },
+    onError: (error, variables, context) => {
+      // An error happened!
+      console.log(`error`, error);
+      if (
+        isAxiosUnprocessableEntityError<
+          ErrorResponseApi<Omit<FormData, "confirm_password">>
+        >(error)
+      ) {
+        const formError = error.response?.data.data;
+
+        // cach 1
+        if (formError) {
+          Object.keys(formError).forEach((key) => {
+            setError(key as keyof Omit<FormData, "confirm_password">, {
+              message:
+                formError[key as keyof Omit<FormData, "confirm_password">],
+              type: "Server",
+            });
+          });
+        }
+
+        // cach 2
+        // if (formError?.email) {
+        //   setError("email", {
+        //     message: formError.email,
+        //     type: "Server",
+        //   });
+        // }
+
+        // if (formError?.password) {
+        //   setError("password", {
+        //     message: formError.password,
+        //     type: "Server",
+        //   });
+        // }
+      }
+    },
+  });
   const onSubmit = handleSubmit((data) => {
-    console.log(data);
+    const body = omit(data, ["confirm_password"]);
+    registerAccountMutation.mutate(body);
   });
 
   console.log("error", errors);
